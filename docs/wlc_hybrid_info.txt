@@ -1,0 +1,429 @@
+WLC HYBRID BINARY DRIVER EVALUATION
+===================================
+
+Analysis date: 2026-07-17
+Target: lib/wlc_hybrid.o_shipped
+Method: read-only static metadata, symbol, relocation, and printable-string
+        inspection. The object was not loaded or executed.
+
+
+1. EXECUTIVE SUMMARY
+--------------------
+
+lib/wlc_hybrid.o_shipped is Broadcom's proprietary, precompiled half of the
+64-bit wl Linux wireless driver. It is a structurally valid, unstripped ELF64
+x86-64 relocatable object, not a complete loadable kernel module. The repository
+links it with the open-source Linux glue in src/shared/linux_osl.c and
+src/wl/sys/*.c to produce wl.ko.
+
+The object identifies itself as driver 6.30.223.271 (revision r587334). Its two
+embedded PCI firmware images identify themselves as 6.30.223.0 and carry
+2013-12-15 build dates. The compiler record is GCC 4.4.7 from 2012. The repository
+README declares the driver unmaintained, so the age and fixed precompiled code
+are the principal maintenance and assurance concerns.
+
+The binary retains a rich symbol table: 2,722 named functions, 1,284 named data
+objects, and 111 source-file records. Only 41 functions are globally exported.
+All 85 unresolved imports go through Broadcom's osl_* OS abstraction, wl_* Linux
+glue, or g_assert_type; there are no direct unresolved Linux kernel API symbols
+in this object. This boundary lets the source wrapper absorb kernel API changes,
+but it does not make the proprietary code rebuildable with current hardening or
+toolchains.
+
+No structural ELF errors were found. Static metadata alone cannot establish
+correctness, freedom from vulnerabilities, exact device compatibility, runtime
+stability, or regulatory behavior.
+
+
+2. SCOPE AND LICENSE LIMIT
+--------------------------
+
+lib/LICENSE.txt describes the Software as binary code owned by Broadcom. Among
+other conditions, it permits use/integration and distribution only complete and
+unmodified for a Broadcom Product, with the agreement accompanying distribution.
+It explicitly prohibits reverse engineering, decompilation, and disassembly and
+provides no warranty or support. This is a technical summary, not legal advice.
+
+To stay within that stated limit, this evaluation does not disassemble
+instructions, decompile functions, reconstruct algorithms, patch the object, or
+attempt to extract executable firmware. Findings are limited to standard ELF
+metadata, names intentionally retained in the symbol table, relocation records,
+and printable identification/diagnostic strings.
+
+
+3. IDENTITY AND PROVENANCE
+--------------------------
+
+File size:       7,350,128 bytes
+File mode:       regular file, 0644 in the Git tree
+SHA-256:         352a6e349f74c69b78e76f68c63752c99b8f6b22dc942af531b754211d7f4743
+SHA-1:           e1d6b0e439cdfd95a239c81af0b65b90daaafb27
+MD5:             6889dbd24abf8006de5cc6eddd138518
+Git blob SHA-1:  91ecb2324bba92afd5981a6fc2657695812a8254
+
+Repository history last attributes this file to:
+
+  commit 397f928129409b5cb30940e3d09cc5ddbc12b283
+  date   2016-09-13 20:57:08 +0200
+  title  upstream driver v6.30.223.271
+
+The current file's printable driver version is:
+
+  6.30.223.271 (r587334)
+
+dkms.conf independently declares PACKAGE_VERSION=6.30.223.271. The Git commit
+date records import into this repository, not compilation. The embedded firmware
+dates below are stronger build-age evidence for those payloads. No comparison
+against a separately downloaded Broadcom artifact was performed.
+
+
+4. ELF FORMAT AND STRUCTURAL HEALTH
+-----------------------------------
+
+Class/data:          ELF64, little-endian
+Type:                ET_REL (relocatable object)
+Machine:             EM_X86_64 / AMD x86-64
+OS ABI:              System V, ABI version 0
+Entry point:         0 (not executable by itself)
+Program headers:     none
+Section headers:     14
+Stripping:           not stripped
+Object flags:        HAS_RELOC, HAS_SYMS
+Structural check:    eu-elflint --gnu-ld reports "No errors"
+
+There are no DWARF debug sections, BTF type information, ORC or conventional
+unwind sections, .modinfo, module signature, GNU build ID, or GNU property note.
+Those absences constrain source-level auditing; .modinfo, vermagic, and module
+signing also belong to the final linked wl.ko rather than this component object.
+An empty .note.GNU-stack section is present, which is the conventional marker
+that this object does not request an executable stack.
+
+The .comment section contains 111 identical compiler records:
+
+  GCC: (GNU) 4.4.7 20120313 (Red Hat 4.4.7-3)
+
+That count matches the 111 ELF FILE symbols and is consistent with one compiler
+record per input compilation unit.
+
+
+5. SECTION LAYOUT
+-----------------
+
+Section             Bytes       Percent of whole file   Purpose
+.text               1,577,264   21.46%                  machine code
+.rodata             3,182,592   43.30%                  tables/microcode/constants
+.rodata.str1.1         18,992    0.26%                  merged strings
+.data               1,378,336   18.75%                  initialized writable data
+.bss                   12,484    0.17%                  zero-initialized data
+.comment                4,995    0.07%                  compiler identification
+.note.GNU-stack             0    0.00%                  stack-execution marker
+
+Non-loadable link metadata accounts for most remaining file bytes:
+
+  .rela.text      891,456 bytes, 37,144 entries
+  .rela.rodata    100,248 bytes,  4,177 entries
+  .rela.data          720 bytes,     30 entries
+  total                         41,351 relocations
+
+Relocation types are:
+
+  R_X86_64_PC32   31,336
+  R_X86_64_32S     5,808
+  R_X86_64_64      4,207
+
+The large read-only-data footprint is substantially explained by named D11
+microcode and PHY/radio tables. The initialized-data footprint contains the two
+large PCI firmware arrays described in section 9.
+
+
+6. SYMBOL TABLE
+---------------
+
+The .symtab contains 4,210 entries:
+
+  Binding:  4,084 local, 126 global, no weak symbols
+  Type:     2,722 functions, 1,284 objects, 111 files, 7 sections,
+            86 NOTYPE entries
+
+The NOTYPE entries are the required null symbol plus 85 unresolved imports.
+All 41 global defined symbols are functions; the remaining 2,681 functions and
+all 1,284 objects are local. Retained local names make feature inventory and
+call-boundary review possible without instruction-level analysis.
+
+The five largest functions by ELF symbol size are:
+
+  srom_parsecis                       0x4a9f (19,103 bytes)
+  wlc_phy_workarounds_nphy            0x4501 (17,665 bytes)
+  wlc_doiovar                         0x41a6 (16,806 bytes)
+  wlc_phy_workarounds_nphy_gainctrl   0x3155 (12,629 bytes)
+  wlc_phy_attach_lcn40phy             0x2892 (10,386 bytes)
+
+Symbol size is not a complexity or vulnerability metric, but it identifies
+large review and compatibility surfaces. In particular, wlc_doiovar is part of
+the driver's externally controlled IOVAR command path, while srom_parsecis is a
+board-configuration parser.
+
+
+7. EXPORTED INTERFACE (41 FUNCTIONS)
+------------------------------------
+
+Lifecycle and core state:
+  wlc_attach, wlc_detach, wlc_init, wlc_up, wlc_down, wlc_reset,
+  wlc_calloc, wlc_pub, wlc_chipmatch
+
+Control/configuration and module registration:
+  wlc_ioctl, wlc_get, wlc_set, wlc_iovar_op, wlc_iovar_getint,
+  wlc_iovar_setint, wlc_module_register, wlc_module_unregister,
+  wlc_statsupd, wlc_wlcif_get_by_index, wlc_wlcif_stats_get
+
+Packet, interrupt, and deferred-work paths:
+  wlc_sendpkt, wlc_isr, wlc_dpc, wlc_intrsoff, wlc_intrson,
+  wlc_intrsrestore, wlc_intrsupd
+
+PCI/channel utilities and wake handling:
+  si_pci_pmeclr, si_pci_sleep, wf_channel2mhz, wf_mhz2channel,
+  wf_chspec_ctlchan, wlc_wowl_wake_reason_process
+
+Shared utility exports:
+  bcm_bprintf, bcm_mkiovar, bcm_mw_to_qdbm, bcm_qdbm_to_mw,
+  bcm_parse_tlvs, bcm_strtoul, getvar, pktsetprio
+
+These exports show the intended boundary between the closed driver core and the
+open Linux wrapper: lifecycle, control requests, packet transfer, interrupts,
+timers, events, and hardware setup cross that boundary.
+
+
+8. UNRESOLVED IMPORTS AND LINUX INTEGRATION
+-------------------------------------------
+
+The object has 85 unresolved imports. None is a direct Linux kernel symbol.
+There are 5,073 relocation references to these imports; the most frequently
+referenced are osl_memcpy (739), osl_readl (629), osl_writel (543), osl_delay
+(532), osl_memset (384), osl_mfree (327), osl_malloc (200), osl_writew (197),
+osl_readw (168), osl_pkttag (165), osl_pktdata (103), osl_memcmp (87),
+osl_snprintf (82), osl_pktfree (70), and wl_del_timer (68).
+
+OS abstraction imports (62):
+  osl_cached, osl_delay, osl_dma_alloc_consistent, osl_dma_free_consistent,
+  osl_dma_map, osl_dma_unmap, osl_malloc, osl_malloced, osl_memcmp, osl_memcpy,
+  osl_memmove, osl_memset, osl_mfree, osl_os_close_image,
+  osl_os_get_image_block, osl_os_open_image, osl_pci_bus, osl_pci_read_config,
+  osl_pci_slot, osl_pci_write_config, osl_pcmcia_read_attr,
+  osl_pcmcia_write_attr, osl_pktalloced, osl_pktdata, osl_pktdup, osl_pktfree,
+  osl_pktget, osl_pktheadroom, osl_pktlen, osl_pktlink, osl_pktnext,
+  osl_pktprio, osl_pktpull, osl_pktpush, osl_pktsetlen, osl_pktsetlink,
+  osl_pktsetnext, osl_pktsetprio, osl_pktshared, osl_pkttag, osl_pkttailroom,
+  osl_printf, osl_readb, osl_readl, osl_readw, osl_reg_map, osl_reg_unmap,
+  osl_snprintf, osl_sprintf, osl_strchr, osl_strcmp, osl_strcpy, osl_strlen,
+  osl_strncmp, osl_strncpy, osl_strrchr, osl_sysuptime, osl_uncached,
+  osl_vsnprintf, osl_writeb, osl_writel, osl_writew
+
+Linux driver-glue imports (22):
+  wl_add_timer, wl_alloc_dma_resources, wl_del_timer, wl_down, wl_dump_ver,
+  wl_event, wl_event_sync, wl_free_timer, wl_ifname, wl_init, wl_init_timer,
+  wl_intrsoff, wl_intrson, wl_intrsrestore, wl_monitor, wl_osl_pcie_rc,
+  wl_pcie_bar1, wl_reset, wl_sendup, wl_set_monitor, wl_txflowcontrol, wl_up
+
+Other import (1):
+  g_assert_type
+
+The repository supplies these through src/shared/linux_osl.c and
+src/wl/sys/wl_linux.c. Makefile links those objects, the WEXT/cfg80211 glue, and
+lib/wlc_hybrid.o_shipped into wl.o/wl.ko. Consequently, direct kernel facilities
+such as sk_buff allocation, MMIO, DMA mapping, timers, and event delivery are
+mediated by inspectable source even though the policy and hardware core are not.
+
+
+9. EMBEDDED FIRMWARE AND MICROCODE
+----------------------------------
+
+Two unusually large local .data objects are named PCI firmware byte arrays:
+
+  dlarray_4352pci   0x6bf79 bytes (442,233)
+  dlarray_4350pci   0x6cd15 bytes (445,717)
+  combined                         887,950 bytes
+
+Their printable identification banners are:
+
+  4352pci-bmac/debug-ag-nodis-aoe-ndoe Version: 6.30.223.0
+  CRC: ff98ca92 Date: Sun 2013-12-15 19:30:36 PST FWID 01-9413fb21
+
+  4350pci-bmac/debug-ag-nodis-aoe-ndoe Version: 6.30.223.0
+  CRC: ffcf9e98 Date: Sun 2013-12-15 19:54:33 PST FWID 01-518e42f8
+
+The exact "debug-ag-nodis-aoe-ndoe" label is an embedded build identifier; its
+individual fields were not interpreted. Firmware strings name an RPC transport,
+packet filtering, scan/offload, RSSI offload, wake-on-wireless, and MAC/PHY
+modules, indicating that some behavior is delegated to these payloads.
+
+There are 154 d11ucode*/d11aeswakeucode* symbols occupying 2,286,091 bytes in
+aggregate. This total includes small companion size variables as well as the
+arrays. Names indicate ordinary and wake/AES-wake microcode for multiple D11
+core revisions, including 12, 15, 16, 22, 24, 26, 29, 30, 32, 33, 40, 41, 42,
+43, and 46, with LP, SSLPN, LCN/LCN40, and MIMO variants. Symbol names indicate
+payload availability, not a complete supported-device matrix.
+
+
+10. NAMED COMPONENT AND CAPABILITY EVIDENCE
+--------------------------------------------
+
+The 111 ELF FILE records expose the original compilation-unit names. They show
+the following broad component groups:
+
+  Cryptography/security:
+    aes.c, aeskeywrap.c, bcmwpa.c, hmac.c, md5.c, passhash.c, prf.c, rc4.c,
+    rijndael-alg-fst.c, sha1.c, tkhash.c, tkmic.c, wep.c, wlc_key.c,
+    wlc_security.c, wlc_sup.c, wowlaestbls.c
+
+  Hardware/platform and board data:
+    aiutils.c, bcmotp.c, bcmsrom.c, hnddma.c, hndpmu.c, nicpci.c, nvram_ro.c,
+    sbutils.c, sflash.c, siutils.c
+
+  Embedded D11 microcode:
+    d11ucode_2w.c, d11ucode_ge24.c, d11ucode_ge40.c, d11ucode_gt15.c,
+    d11ucode_le15.c, d11ucode_wowl.c
+
+  Core MAC, association, scan, rate, and protocol control:
+    wlc.c, wlc_assoc.c, wlc_bmac.c, wlc_bsscfg.c, wlc_event.c, wlc_hw.c,
+    wlc_intr.c, wlc_lq.c, wlc_rate.c, wlc_rate_def.c, wlc_rate_sel.c,
+    wlc_scan.c, wlc_scb.c, wlc_scb_ratesel.c, wlc_utils.c
+
+  Aggregation, throughput, and advanced PHY/MAC features:
+    wlc_airtime.c, wlc_ampdu.c, wlc_ampdu_cmn.c, wlc_ampdu_rx.c,
+    wlc_amsdu.c, wlc_antsel.c, wlc_ppr.c, wlc_stf.c, wlc_tso.c,
+    wlc_txbf.c, wlc_vht.c
+
+  Regulatory/channel management:
+    wlc_11d.c, wlc_11h.c, wlc_cac.c, wlc_cca.c, wlc_channel.c, wlc_clm.c,
+    wlc_clm_data.c, wlc_cntry.c, wlc_csa.c, wlc_dfs.c, wlc_quiet.c,
+    wlc_rm.c, wlc_tpc.c
+
+  PHY families and tables:
+    wlc_phy_abg.c, wlc_phy_ac.c, wlc_phy_cmn.c, wlc_phy_extended_n.c,
+    wlc_phy_ht.c, wlc_phy_iovar.c, wlc_phy_lcn.c, wlc_phy_lcn40.c,
+    wlc_phy_lp.c, wlc_phy_n.c, wlc_phy_radio_n.c, wlc_phy_shim.c,
+    wlc_phy_ssn.c, wlc_phytbl_ac.c, wlc_phytbl_acdc.c, wlc_phytbl_ht.c,
+    wlc_phytbl_lcn.c, wlc_phytbl_lcn40.c, wlc_phytbl_lp.c,
+    wlc_phytbl_n.c, wlc_phytbl_ssn.c
+
+  Power, offload, and wake behavior:
+    wlc_offloads.c, wlc_olpc_engine.c, wlc_wowl.c
+
+Retained function names and strings further confirm AES CBC/CCM/CCMP/CMAC and
+key wrap, HMAC, SHA-1, MD5, RC4, WEP, TKIP, WPA/WPA2 supplicant/key handling,
+TKIP and AES replay checks, AMPDU/AMSDU, VHT, transmit beamforming, 802.11d/h,
+DFS/radar, country/CLM data, transmit-power control, monitor handling, packet
+filtering, ARP/offload statistics, and wake-on-wireless paths.
+
+These names demonstrate compiled-in code/data and diagnostic vocabulary. They
+do not prove that every feature is enabled, reachable, supported on every chip,
+standards-conformant, or secure in this build.
+
+
+11. SECURITY AND RELIABILITY OBSERVATIONS
+-----------------------------------------
+
+Confirmed observations:
+
+* The final code executes in kernel context and processes hardware state,
+  management/control requests, and network traffic. A defect therefore has a
+  potentially system-wide impact rather than ordinary user-process isolation.
+
+* The object is fixed, closed, more than a decade old by embedded build evidence,
+  built with GCC 4.4.7, and housed in an archived repository. It cannot be
+  recompiled locally with current compiler diagnostics or hardening options.
+
+* No stack-canary, FORTIFY, sanitizer, CFI, retpoline/IBT, BTF, or unwind-related
+  imports/sections were found in this component. Some protections are applied by
+  the kernel or final module build, but they cannot retroactively instrument the
+  precompiled instruction stream. The empty GNU-stack marker is a positive but
+  limited property.
+
+* The interface includes legacy WEP/RC4 and TKIP code alongside AES/CCMP and
+  WPA/WPA2. Presence supports compatibility; it does not imply that weak modes
+  are selected. Deployments should avoid WEP and TKIP.
+
+* The object references bounded and unbounded string helpers. Relocations include
+  82 osl_snprintf, 33 osl_strncpy, 2 osl_vsnprintf, and one each to osl_strcpy and
+  osl_sprintf. Symbol references alone cannot show buffer sizes or establish an
+  overflow, so these are audit targets rather than vulnerability findings.
+
+* Diagnostic strings include assertion file/line data and pointer formatting
+  ("ASSERT in file %s line %d (ra %p, fa %p)") plus allocator diagnostics.
+  Whether pointers are exposed depends on reachability, log settings, and kernel
+  pointer-format restrictions.
+
+* The ELF is internally well formed, and all proprietary-to-host dependencies
+  are concentrated in a small named wrapper boundary. This is useful for kernel
+  compatibility maintenance and for auditing the directly reachable Linux APIs.
+
+Risk-relevant surfaces indicated by names, not audited implementations:
+
+* wlc_ioctl, wlc_iovar_op, and the large wlc_doiovar control parser;
+* packet receive/transmit, aggregation, security-key, and replay paths;
+* wireless management-frame, information-element, channel, and regulatory data;
+* srom_parsecis plus OTP/SROM/NVRAM board configuration;
+* PCI/PCIe configuration, DMA, MMIO, interrupts, timers, and power management;
+* host-to-embedded-firmware RPC, offload, packet-filter, scan, and wake paths.
+
+No claim about a specific exploitable flaw or CVE is made. This pass did not
+perform live CVE/version correlation, runtime tracing, fuzzing, malformed-input
+testing, hardware exercise, or instruction-level control/data-flow analysis.
+
+
+12. OPERATIONAL RECOMMENDATIONS
+-------------------------------
+
+1. Treat the SHA-256 above as the identity of the evaluated artifact. Recompute
+   it after packaging or transfer; do not silently substitute a similarly named
+   blob.
+
+2. Prefer a currently maintained distribution package or supported driver/device
+   where possible. If this driver is required for legacy hardware, limit it to a
+   well-defined compatibility environment and document the accepted risk.
+
+3. Build the final wl.ko against every exact target kernel and inspect its
+   vermagic, signer, dependencies, and load diagnostics. Results for wl.ko must
+   not be inferred from this intermediate object.
+
+4. Use modern network configuration (at least WPA2 with AES/CCMP where supported)
+   and disable WEP/TKIP rather than relying on their mere availability.
+
+5. Exercise association, suspend/resume, wake, scan, heavy traffic, and error
+   recovery on representative hardware. Firmware-offload and regulatory paths
+   should be included because they cross host/blob/firmware boundaries.
+
+6. Audit changes to src/shared/linux_osl.c and src/wl/sys/*.c carefully: those
+   files translate kernel memory, DMA, packet, timer, interrupt, and cfg80211/WEXT
+   semantics for a proprietary object whose ABI cannot be regenerated.
+
+7. Preserve lib/LICENSE.txt and evaluate its terms before redistribution or any
+   deeper binary work. Keep the proprietary object unmodified.
+
+
+13. REPRODUCIBILITY
+-------------------
+
+Primary tools used were GNU binutils 2.46.1, elfutils eu-elflint, Git, file,
+sha256sum/sha1sum/md5sum, strings, and size. Representative read-only commands:
+
+  file lib/wlc_hybrid.o_shipped
+  stat lib/wlc_hybrid.o_shipped
+  sha256sum lib/wlc_hybrid.o_shipped
+  sha1sum lib/wlc_hybrid.o_shipped
+  md5sum lib/wlc_hybrid.o_shipped
+  readelf -h -S -W lib/wlc_hybrid.o_shipped
+  readelf -sW lib/wlc_hybrid.o_shipped
+  readelf -rW lib/wlc_hybrid.o_shipped
+  readelf -p .comment lib/wlc_hybrid.o_shipped
+  readelf -n lib/wlc_hybrid.o_shipped
+  nm -u lib/wlc_hybrid.o_shipped
+  nm -g --defined-only lib/wlc_hybrid.o_shipped
+  nm -S --size-sort --defined-only lib/wlc_hybrid.o_shipped
+  size -A -d lib/wlc_hybrid.o_shipped
+  strings -a -n 5 lib/wlc_hybrid.o_shipped
+  eu-elflint --gnu-ld lib/wlc_hybrid.o_shipped
+  git log --follow -- lib/wlc_hybrid.o_shipped
+
+No command in this analysis loaded, linked, executed, disassembled, decompiled,
+or modified the proprietary object.
